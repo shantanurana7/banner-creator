@@ -1,70 +1,44 @@
-# Getting Started with Create React App
+# Image Content Factory
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A fully revamped, modular, and client-side web application built with React to create and customize branded banners across multiple platforms (Instagram, LinkedIn, Twitter/X, and E-Comms).
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Multi-Platform Support**: Fixed high-resolution canvas outputs tailored perfectly to Instagram (1080×1080), LinkedIn (1200×627), Twitter (1600×900), and Email Communications (600×800).
+- **Advanced Image Cropping**: Upload high-resolution images and crop, pan, zoom, rotate, or flip them directly from the browser using `react-advanced-cropper`.
+- **Text Engine**: Dynamically add and position titles and subtitles with custom branding fonts (CondeSans-Bold and UniversLTStd).
+- **Branded Window Motif**: An adjustable, movable gradient "window" cutout overlay that supports a 7:10 or 10:7 aspect ratio. Sizing dynamically enforces a minimum of 20% canvas coverage.
+- **Dynamic Swoosh Effect**: Simulates a brush stroke trailing from the window cutout. Composed of 30 distinct horizontal color bands precisely sampled from the underlying pixels for perfect contextual blending.
+- **Draft Stamping & Grids**: Quickly mark assets with a "Draft Version" stamp and use customizable compositional grids.
+- **Session Auto-save**: Never lose your progress. All edits are safely persisted to `sessionStorage` in real-time.
+- **Standalone Client Build**: Export the entire editor—HTML, CSS, JS, and all binary font/SVG assets—into a single standalone `index.html` file that runs in any browser without needing an internet connection or web server.
 
-### `npm start`
+## Installation & Setup
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+2. **Start the development server**
+   ```bash
+   npm start
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
-### `npm test`
+3. **Build the production version**
+   ```bash
+   npm run build
+   ```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+4. **Generate Standalone Client File**
+   ```bash
+   npm run build:client
+   ```
+   This will run the production build and then execute a custom Node script to package the entirety of the application into one single file located at `client-version/index.html`. You can distribute this single file safely!
 
-### `npm run build`
+## Technologies
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- React 18, Tailwind CSS (Dark Mode Glassmorphism UI)
+- `react-advanced-cropper` for image manipulations
+- Native HTML5 Canvas API for complex layered image rendering
