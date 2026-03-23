@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
-import { PLATFORM_CONFIGS, WINDOW_MOTIF_DEFAULTS } from '../utils/constants';
+import { PLATFORM_CONFIGS, WINDOW_MOTIF_DEFAULTS, SWOOSH_CONFIG } from '../utils/constants';
 import {
   drawImageCover,
   drawGrid,
@@ -13,7 +13,7 @@ import {
 
 /**
  * EditorCanvas - Main canvas component for each platform.
- * 
+ *
  * Canvas interactions: text drag, window motif drag/resize (all 4 corners), swoosh vertical drag.
  * Image crop is handled by the ImageCropModal, not here.
  */
@@ -28,6 +28,7 @@ const EditorCanvas = ({
   gridRatio,
   draftStamp,
   logoImg,
+  onlyImage,
   onTextDrag,
   onMotifWindowChange,
   onSwooshOffsetChange,
@@ -62,8 +63,13 @@ const EditorCanvas = ({
     canvas.width = config.width;
     canvas.height = config.height;
 
-    // Layer 0: Image background
-    drawImageCover(ctx, img, config.width, config.height, cropState);
+    // Image adjustments come from motifState
+    const adjContrast   = motifState?.contrast   !== undefined ? motifState.contrast   : 100;
+    const adjSaturation = motifState?.saturation !== undefined ? motifState.saturation : 100;
+    const imgAdj = { contrast: adjContrast, saturation: adjSaturation };
+
+    // Layer 0: Image background (with optional contrast/saturation)
+    drawImageCover(ctx, img, config.width, config.height, cropState, imgAdj);
 
     // Layer 1: Window Motif (gradient + cutout)
     if (motifState?.enabled) {
@@ -72,11 +78,11 @@ const EditorCanvas = ({
 
     // Layer 2: Swoosh
     if (swooshState?.enabled && motifState?.enabled) {
-      drawSwoosh(ctx, canvas, motifState, swooshState);
+      drawSwoosh(ctx, canvas, motifState, swooshState, platformKey);
     }
 
-    // Layer 3a: Logo
-    if (logoImg) {
+    // Layer 3a: Logo (hidden in "only image" mode)
+    if (logoImg && !onlyImage) {
       drawLogo(ctx, logoImg, platformKey);
     }
 
@@ -90,9 +96,11 @@ const EditorCanvas = ({
       drawGrid(ctx, config.width, config.height, gridRatio);
     }
 
-    // Layer 3d: Text
-    drawTextElements(ctx, textElements);
-  }, [config, cropState, motifState, swooshState, gridVisible, gridRatio, draftStamp, textElements, logoImg, platformKey]);
+    // Layer 3d: Text (hidden in "only image" mode)
+    if (!onlyImage) {
+      drawTextElements(ctx, textElements);
+    }
+  }, [config, cropState, motifState, swooshState, gridVisible, gridRatio, draftStamp, textElements, logoImg, platformKey, onlyImage]);
 
   // Load image from data URL
   useEffect(() => {
@@ -126,6 +134,7 @@ const EditorCanvas = ({
 
   // Hit-test: text
   const getTextElementAt = useCallback((mx, my) => {
+    if (onlyImage) return null;
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
@@ -144,7 +153,7 @@ const EditorCanvas = ({
       }
     }
     return null;
-  }, [textElements]);
+  }, [textElements, onlyImage]);
 
   // Hit-test: motif corners and body
   const getMotifHit = useCallback((mx, my) => {
@@ -177,9 +186,12 @@ const EditorCanvas = ({
   const getSwooshHit = useCallback((mx, my) => {
     if (!swooshState?.enabled || !motifState?.enabled || !motifState.window) return false;
     const win = motifState.window;
-    const sw = 120;
-    const sh = 80;
-    const swooshY = win.y + (swooshState.offsetY || win.height / 2) - sh / 2;
+    const platformDims = SWOOSH_CONFIG.platforms?.[platformKey] || { width: 120, height: 80 };
+    const sw = platformDims.width;
+    const sh = platformDims.height;
+    // Match the same Y clamping as drawSwoosh
+    const rawY = win.y + (swooshState.offsetY || win.height / 2) - sh / 2;
+    const swooshY = Math.max(win.y, Math.min(win.y + win.height - sh, rawY));
 
     let swooshX;
     if (swooshState.side === 'left') {
@@ -189,7 +201,7 @@ const EditorCanvas = ({
     }
 
     return mx >= swooshX && mx <= swooshX + sw && my >= swooshY && my <= swooshY + sh;
-  }, [swooshState, motifState]);
+  }, [swooshState, motifState, platformKey]);
 
   // Get cursor for a given corner
   const getCornerCursor = (corner) => {
@@ -340,11 +352,13 @@ const EditorCanvas = ({
         }
 
         case 'swoosh': {
+          const win = motifState.window;
+          const swooshH = (SWOOSH_CONFIG.platforms?.[platformKey] || { height: 80 }).height;
+          // Clamp so the swoosh body stays fully within the window motif
+          const minOffset = swooshH / 2;
+          const maxOffset = win.height - swooshH / 2;
           const deltaY = pos.y - d.startY;
-          const newOffsetY = Math.max(0, Math.min(
-            motifState.window.height,
-            d.offsetY + deltaY
-          ));
+          const newOffsetY = Math.max(minOffset, Math.min(maxOffset, d.offsetY + deltaY));
           onSwooshOffsetChange(newOffsetY);
           break;
         }
@@ -370,7 +384,7 @@ const EditorCanvas = ({
     };
   }, [
     getCanvasPos, getTextElementAt, getMotifHit, getSwooshHit,
-    textElements, motifState, swooshState, config,
+    textElements, motifState, swooshState, config, platformKey,
     onTextDrag, onMotifWindowChange, onSwooshOffsetChange,
   ]);
 
@@ -391,7 +405,7 @@ const EditorCanvas = ({
           {config.width} × {config.height}px
         </span>
         <span className="text-[10px] text-gray-500">
-          Drag text/motif/swoosh • Resize motif from corners
+          Drag text/motif/swoosh • Resize motif from any corner
         </span>
       </div>
     </div>

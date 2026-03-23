@@ -76,6 +76,7 @@ export const drawGrid = (ctx, canvasWidth, canvasHeight, gridRatio = '7:10') => 
 
 /**
  * Draws the KPMG logo on the canvas.
+ * Uses per-platform logo widths from LOGO_CONFIG.widths.
  */
 export const drawLogo = (ctx, logoImg, platformKey) => {
   if (!logoImg) return;
@@ -84,7 +85,7 @@ export const drawLogo = (ctx, logoImg, platformKey) => {
   if (!pos) return;
 
   const aspectRatio = logoImg.naturalHeight / logoImg.naturalWidth;
-  const drawWidth = LOGO_CONFIG.width;
+  const drawWidth = LOGO_CONFIG.widths[platformKey] || 100;
   const drawHeight = drawWidth * aspectRatio;
 
   ctx.drawImage(logoImg, pos.x, pos.y, drawWidth, drawHeight);
@@ -140,25 +141,34 @@ const roundRect = (ctx, x, y, w, h, r) => {
 
 /**
  * Draws the window motif overlay with gradient and window cutout.
- * 
+ *
  * LAYER ORDER:
  *   Layer 0 (base): Uploaded image background (drawn before this function)
  *   Layer 1: Full-canvas gradient overlay with a CUTOUT that reveals Layer 0
  *   Layer 2: Swoosh (drawn after this function)
  *   Layer 3: Logo + text (drawn after this function)
- * 
+ *
  * The cutout is the "window" — it punches through the gradient to show the image.
- * 
+ *
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} canvasWidth
  * @param {number} canvasHeight
- * @param {object} motifState - { enabled, gradientKey, windowRatio, window: { x, y, width, height } }
+ * @param {object} motifState - { enabled, gradientKey, windowRatio, gradientOpacity, blendMode,
+ *                                window: { x, y, width, height } }
  */
 export const drawWindowMotif = (ctx, canvasWidth, canvasHeight, motifState) => {
   if (!motifState || !motifState.enabled) return;
 
   const gradient = MOTIF_GRADIENTS[motifState.gradientKey] || MOTIF_GRADIENTS.dark;
   const win = motifState.window;
+
+  // Use per-state opacity if set, otherwise fall back to gradient default
+  const opacity = (motifState.gradientOpacity !== undefined)
+    ? motifState.gradientOpacity
+    : gradient.opacity;
+
+  // Blend mode: 'source-over' (normal/smooth), 'multiply', 'overlay' (linear)
+  const blendMode = motifState.blendMode || 'source-over';
 
   ctx.save();
 
@@ -175,28 +185,17 @@ export const drawWindowMotif = (ctx, canvasWidth, canvasHeight, motifState) => {
   offCtx.fillStyle = grad;
   offCtx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Cut out the window area (clear those pixels)
+  // Cut out the window area (clear those pixels — no border drawn)
   offCtx.clearRect(win.x, win.y, win.width, win.height);
 
-  // Draw the offscreen gradient (with cutout) onto the main canvas with opacity
-  ctx.globalAlpha = gradient.opacity;
+  // Draw the offscreen gradient (with cutout) onto the main canvas
+  ctx.globalAlpha = opacity;
+  ctx.globalCompositeOperation = blendMode;
   ctx.drawImage(offscreen, 0, 0);
+
+  // Reset composite operation and alpha
+  ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1.0;
-
-  // Draw a subtle border around the window cutout
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(win.x, win.y, win.width, win.height);
-
-  // Draw resize handle indicator (bottom-right corner)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  const handleSize = 12;
-  ctx.fillRect(
-    win.x + win.width - handleSize,
-    win.y + win.height - handleSize,
-    handleSize,
-    handleSize
-  );
 
   ctx.restore();
 };
@@ -204,14 +203,32 @@ export const drawWindowMotif = (ctx, canvasWidth, canvasHeight, motifState) => {
 /**
  * Draws the swoosh effect as a RECTANGLE (not ellipse).
  * Samples edge color from the window cutout and creates a gradient streak.
+ *
+ * Opacity behavior:
+ *  - 100% opacity from the window edge to (opaqueFraction * swooshWidth)
+ *  - Linear fade from 100% → 0% over the remaining far portion
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} motifState
+ * @param {object} swooshState
+ * @param {string} platformKey - used to select per-platform swoosh dimensions
  */
-export const drawSwoosh = (ctx, canvas, motifState, swooshState) => {
+export const drawSwoosh = (ctx, canvas, motifState, swooshState, platformKey) => {
   if (!swooshState || !swooshState.enabled || !motifState || !motifState.enabled) return;
 
   const win = motifState.window;
   const { side, offsetY } = swooshState;
-  const swooshW = SWOOSH_CONFIG.width;
-  const swooshH = SWOOSH_CONFIG.height;
+
+  // Per-platform dimensions, with fallback
+  const platformDims = (SWOOSH_CONFIG.platforms && platformKey && SWOOSH_CONFIG.platforms[platformKey])
+    ? SWOOSH_CONFIG.platforms[platformKey]
+    : { width: 120, height: 80 };
+
+  const swooshW = platformDims.width;
+  const swooshH = platformDims.height;
+  const stripCount = SWOOSH_CONFIG.sampleBandSize || 30;
+  const opaqueFraction = SWOOSH_CONFIG.opaqueFraction || 0.6;
 
   // X positions for drawing and sampling
   let sampleX, swooshX;
@@ -225,44 +242,65 @@ export const drawSwoosh = (ctx, canvas, motifState, swooshState) => {
 
   const swooshY = win.y + (offsetY || win.height / 2) - swooshH / 2;
 
-  // Clamp swoosh within canvas
-  const clampedY = Math.max(0, Math.min(canvas.height - swooshH, swooshY));
+  // Clamp swoosh within the window motif border (top & bottom), then within canvas
+  const clampedY = Math.max(win.y, Math.min(win.y + win.height - swooshH, swooshY));
   const clampedX = Math.max(0, Math.min(canvas.width - swooshW, swooshX));
 
   ctx.save();
 
-  // Divide the swoosh sampling area to 30 parts height wise
-  const stripCount = 30;
-  const stripHeight = swooshH / stripCount;
-
+  // --- Step 1: Sample N colors at evenly-spaced points along the swoosh height ---
+  const samples = [];   // [{ r, g, b }]
   for (let i = 0; i < stripCount; i++) {
-    const currentY = clampedY + i * stripHeight;
-    // Sample from the middle of this specific strip
-    const sampleY = Math.min(canvas.height - 1, Math.max(0, currentY + stripHeight / 2));
-
-    // Get pixel color from the canvas at the sample point
-    let sampledColor = '#00338d'; // fallback
+    const t = i / (stripCount - 1);
+    const sampleY = Math.min(canvas.height - 1, Math.max(0, clampedY + t * (swooshH - 1)));
+    let r = 0, g = 51, b = 141; // fallback: #00338d
     try {
       const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-      sampledColor = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
-    } catch (e) {
-      // CORS or other issue - use fallback
-    }
+      r = pixel[0]; g = pixel[1]; b = pixel[2];
+    } catch (e) { /* CORS fallback */ }
+    samples.push({ r, g, b });
+  }
 
-    // Create gradient: 100% opacity at window edge → 0% going outward
+  // --- Step 2: Render 1px-tall rows with per-row interpolated color (no banding) ---
+  const totalRows = Math.ceil(swooshH);
+
+  for (let row = 0; row < totalRows; row++) {
+    const t = row / Math.max(totalRows - 1, 1);  // 0..1 along vertical extent
+
+    // Smooth lerp between the two nearest sample colors
+    const samplePos = t * (stripCount - 1);
+    const lo = Math.floor(samplePos);
+    const hi = Math.min(lo + 1, stripCount - 1);
+    const frac = samplePos - lo;
+
+    const sLo = samples[lo];
+    const sHi = samples[hi];
+    const r = Math.round(sLo.r + (sHi.r - sLo.r) * frac);
+    const g = Math.round(sLo.g + (sHi.g - sLo.g) * frac);
+    const b = Math.round(sLo.b + (sHi.b - sLo.b) * frac);
+    const currentY = clampedY + row;
+
+    // Horizontal gradient: fully opaque zone → smooth ease-out fade to transparent
     let grad;
     if (side === 'left') {
+      // Swoosh goes LEFT from window edge (right side of swoosh is at window)
+      // clampedX is leftmost edge; clampedX + swooshW is at window edge
       grad = ctx.createLinearGradient(clampedX + swooshW, currentY, clampedX, currentY);
     } else {
+      // Swoosh goes RIGHT from window edge (left side of swoosh is at window)
       grad = ctx.createLinearGradient(clampedX, currentY, clampedX + swooshW, currentY);
     }
-    grad.addColorStop(0, sampledColor);
+
+    // Fully opaque from window edge to opaqueFraction (inlined rgb to avoid lint warning)
+    grad.addColorStop(0, `rgb(${r}, ${g}, ${b})`);
+    grad.addColorStop(opaqueFraction, `rgb(${r}, ${g}, ${b})`);
+    // Ease-out fade: mid-point at ~35% alpha for a smooth visual ramp
+    const midFade = opaqueFraction + (1 - opaqueFraction) * 0.5;
+    grad.addColorStop(midFade, `rgba(${r}, ${g}, ${b}, 0.35)`);
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     ctx.fillStyle = grad;
-
-    // Draw as a simple RECTANGLE strip (Math.ceil to prevent background bleeding between strips)
-    ctx.fillRect(clampedX, currentY, swooshW, Math.ceil(stripHeight));
+    ctx.fillRect(clampedX, currentY, swooshW, 1);
   }
 
   ctx.restore();
@@ -271,8 +309,15 @@ export const drawSwoosh = (ctx, canvas, motifState, swooshState) => {
 /**
  * Draws the uploaded image onto the canvas with crop/zoom applied.
  * The image always fills the entire canvas (cover behavior).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLImageElement} image
+ * @param {number} canvasWidth
+ * @param {number} canvasHeight
+ * @param {object} cropState - { zoom, panX, panY }
+ * @param {object} [imageAdjust] - { contrast, saturation } as percentages (100 = normal)
  */
-export const drawImageCover = (ctx, image, canvasWidth, canvasHeight, cropState) => {
+export const drawImageCover = (ctx, image, canvasWidth, canvasHeight, cropState, imageAdjust) => {
   if (!image) return;
 
   const zoom = cropState?.zoom || 1;
@@ -301,7 +346,16 @@ export const drawImageCover = (ctx, image, canvasWidth, canvasHeight, cropState)
   srcX = Math.max(0, Math.min(srcX, image.naturalWidth - srcWidth));
   srcY = Math.max(0, Math.min(srcY, image.naturalHeight - srcHeight));
 
-  ctx.drawImage(image, srcX, srcY, srcWidth, srcHeight, 0, 0, canvasWidth, canvasHeight);
+  // Apply image filters if provided
+  if (imageAdjust && (imageAdjust.contrast !== 100 || imageAdjust.saturation !== 100)) {
+    ctx.save();
+    ctx.filter = `contrast(${imageAdjust.contrast}%) saturate(${imageAdjust.saturation}%)`;
+    ctx.drawImage(image, srcX, srcY, srcWidth, srcHeight, 0, 0, canvasWidth, canvasHeight);
+    ctx.filter = 'none';
+    ctx.restore();
+  } else {
+    ctx.drawImage(image, srcX, srcY, srcWidth, srcHeight, 0, 0, canvasWidth, canvasHeight);
+  }
 };
 
 /**

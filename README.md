@@ -7,10 +7,12 @@ A fully revamped, modular, and client-side web application built with React to c
 - **Multi-Platform Support**: Fixed high-resolution canvas outputs tailored perfectly to Instagram (1080×1080), LinkedIn (1200×627), Twitter (1600×900), and Email Communications (600×800).
 - **Advanced Image Cropping**: Upload high-resolution images and crop, pan, zoom, rotate, or flip them directly from the browser using `react-advanced-cropper`.
 - **Text Engine**: Dynamically add and position titles and subtitles with custom branding fonts (CondeSans-Bold and UniversLTStd).
-- **Branded Window Motif**: An adjustable, movable gradient "window" cutout overlay that supports a 7:10 or 10:7 aspect ratio. Sizing dynamically enforces a minimum of 20% canvas coverage.
-- **Dynamic Swoosh Effect**: Simulates a brush stroke trailing from the window cutout. Composed of 30 distinct horizontal color bands precisely sampled from the underlying pixels for perfect contextual blending.
+- **Branded Window Motif**: An adjustable gradient "window" cutout overlay that supports a 7:10 or 10:7 aspect ratio. Clean, borderless design allows resizing directly from all corners.
+- **Motif Image Adjustments**: Fine-tune the background image Contrast (50%-200%) and Saturation (0%-200%) directly from the Motif panel.
+- **Advanced Gradient Blending**: Control the opacity (0.0 - 1.0) and choose from 8 different blend modes (Smooth, Darken, Multiply, Linear, Overlay, Color, Lighten, Saturation) for the window motif overlay to perfectly match the brand photo.
+- **Dynamic Swoosh Effect**: Simulates a brush stroke trailing from the window cutout. Composed of configurable color bands parsed into a seamless, per-pixel interpolated smooth gradient with a natural ease-out fade.
+- **Only Image Mode**: Instantly strip away all text, logos, and UI elements to focus purely on the core image and window motif layout.
 - **Draft Stamping & Grids**: Quickly mark assets with a "Draft Version" stamp and use customizable compositional grids.
-- **Session Auto-save**: Never lose your progress. All edits are safely persisted to `sessionStorage` in real-time.
 - **Standalone Client Build**: Export the entire editor—HTML, CSS, JS, and all binary font/SVG assets—into a single standalone `index.html` file that runs in any browser without needing an internet connection or web server.
 
 ## Installation & Setup

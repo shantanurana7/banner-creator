@@ -1,11 +1,56 @@
 import React from 'react';
-import { MOTIF_GRADIENTS, SWOOSH_CONFIG } from '../utils/constants';
+import { MOTIF_GRADIENTS } from '../utils/constants';
 import { Layers, Wind } from 'lucide-react';
+
+/**
+ * Slider sub-component for a labeled range input.
+ */
+const LabeledSlider = ({ label, value, min, max, step, onChange, displayValue }) => (
+  <div>
+    <div className="flex items-center justify-between mb-1">
+      <span className="text-[11px] text-gray-500">{label}</span>
+      <span className="text-[11px] text-gray-400 font-mono">
+        {displayValue !== undefined ? displayValue : value}
+      </span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full h-1.5 rounded-full appearance-none cursor-pointer
+                 bg-surface-300 accent-accent-lighter"
+    />
+  </div>
+);
 
 /**
  * MotifPanel - Controls for window motif, swoosh, and draft stamp.
  */
 const MotifPanel = ({ motifState, swooshState, draftStamp, onMotifChange, onSwooshChange, onDraftStampToggle }) => {
+
+  // Resolve current gradient opacity
+  const currentGrad = MOTIF_GRADIENTS[motifState.gradientKey] || MOTIF_GRADIENTS.dark;
+  const gradientOpacity = motifState.gradientOpacity !== undefined
+    ? motifState.gradientOpacity
+    : currentGrad.opacity;
+  const contrast    = motifState.contrast    !== undefined ? motifState.contrast    : 100;
+  const saturation  = motifState.saturation  !== undefined ? motifState.saturation  : 100;
+  const blendMode   = motifState.blendMode   || 'source-over';
+
+  const blendOptions = [
+    { value: 'source-over', label: 'Smooth (Default)' },
+    { value: 'darken',      label: 'Darken' },
+    { value: 'multiply',    label: 'Multiply' },
+    { value: 'hard-light',  label: 'Linear' },
+    { value: 'overlay',     label: 'Overlay' },
+    { value: 'color',       label: 'Color' },
+    { value: 'lighten',     label: 'Lighten' },
+    { value: 'saturation',  label: 'Saturation' },
+  ];
+
   return (
     <div className="space-y-4">
       {/* --- Window Motif Section --- */}
@@ -21,7 +66,7 @@ const MotifPanel = ({ motifState, swooshState, draftStamp, onMotifChange, onSwoo
         </div>
 
         {motifState.enabled && (
-          <div className="space-y-3 animate-fade-in">
+          <div className="space-y-4 animate-fade-in">
             {/* Gradient Selection */}
             <div>
               <span className="text-[11px] text-gray-500 mb-2 block">Gradient</span>
@@ -75,6 +120,64 @@ const MotifPanel = ({ motifState, swooshState, draftStamp, onMotifChange, onSwoo
                 ))}
               </div>
             </div>
+
+            {/* ─────────── Image Adjustment Sliders ─────────── */}
+            <div className="border-t border-surface-300/50 pt-3 space-y-3">
+              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold block">
+                Image Adjustments
+              </span>
+
+              {/* Gradient Opacity */}
+              <LabeledSlider
+                label="Gradient Opacity"
+                value={gradientOpacity}
+                min={0}
+                max={1}
+                step={0.05}
+                displayValue={gradientOpacity.toFixed(2)}
+                onChange={(v) => onMotifChange({ ...motifState, gradientOpacity: v })}
+              />
+
+              {/* Image Contrast */}
+              <LabeledSlider
+                label="Image Contrast"
+                value={contrast}
+                min={50}
+                max={200}
+                step={1}
+                displayValue={`${contrast}%`}
+                onChange={(v) => onMotifChange({ ...motifState, contrast: v })}
+              />
+
+              {/* Image Saturation */}
+              <LabeledSlider
+                label="Image Saturation"
+                value={saturation}
+                min={0}
+                max={200}
+                step={1}
+                displayValue={`${saturation}%`}
+                onChange={(v) => onMotifChange({ ...motifState, saturation: v })}
+              />
+
+              {/* Blend Mode */}
+              <div>
+                <span className="text-[11px] text-gray-500 mb-1.5 block">Gradient Blend Mode</span>
+                <select
+                  value={blendMode}
+                  onChange={(e) => onMotifChange({ ...motifState, blendMode: e.target.value })}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-surface-200 text-gray-300
+                             border border-surface-300 focus:outline-none focus:border-accent-lighter
+                             cursor-pointer transition-colors"
+                >
+                  {blendOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -117,7 +220,7 @@ const MotifPanel = ({ motifState, swooshState, draftStamp, onMotifChange, onSwoo
             </div>
 
             <div className="text-[10px] text-gray-500">
-              Size: {SWOOSH_CONFIG.width}×{SWOOSH_CONFIG.height}px • Drag vertically on canvas
+              Drag vertically on canvas to reposition
             </div>
           </div>
         )}

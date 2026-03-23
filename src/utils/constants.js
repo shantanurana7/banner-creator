@@ -50,58 +50,87 @@ export const FONT_COLORS = ['#FFFFFF', '#ACEAFF'];
 export const MAX_TITLES = 3;
 export const MAX_SUBTITLES = 3;
 
+// Per-platform text settings
+const TEXT_SETTINGS = {
+  insta: {
+    title: { size: 72, minSize: 36, maxSize: 120, wrapWidthFraction: 0.75 },
+    subtitle: { size: 36, minSize: 16, maxSize: 60, wrapWidthFraction: 0.75 },
+  },
+  linkedin: {
+    title: { size: 56, minSize: 28, maxSize: 90, wrapWidthFraction: 0.70 },
+    subtitle: { size: 28, minSize: 14, maxSize: 48, wrapWidthFraction: 0.70 },
+  },
+  twitter: {
+    title: { size: 72, minSize: 36, maxSize: 120, wrapWidthFraction: 0.65 },
+    subtitle: { size: 36, minSize: 18, maxSize: 60, wrapWidthFraction: 0.65 },
+  },
+  ecomms: {
+    title: { size: 48, minSize: 24, maxSize: 80, wrapWidthFraction: 0.80 },
+    subtitle: { size: 24, minSize: 12, maxSize: 40, wrapWidthFraction: 0.80 },
+  },
+};
+
 export const createDefaultTextElements = (platformKey) => {
   const config = PLATFORM_CONFIGS[platformKey];
+  const ts = TEXT_SETTINGS[platformKey] || TEXT_SETTINGS.insta;
   const centerX = config.width / 2;
   const centerY = config.height / 2;
+  const titleWrap = Math.min(config.width * ts.title.wrapWidthFraction, 900);
+  const subWrap = Math.min(config.width * ts.subtitle.wrapWidthFraction, 900);
 
   return [
     {
       id: 'title1',
       text: 'Title 1',
       x: centerX,
-      y: centerY - 40,
-      size: 48,
-      minSize: 28,
-      maxSize: 72,
+      y: centerY - ts.title.size * 0.8,
+      size: ts.title.size,
+      minSize: ts.title.minSize,
+      maxSize: ts.title.maxSize,
       color: '#FFFFFF',
       isTitle: true,
       maxLength: 60,
       font: FONTS.title,
       isBold: true, // always bold for titles
-      wrapWidth: Math.min(config.width * 0.7, 600),
+      wrapWidth: titleWrap,
       textAlign: 'center',
     },
     {
       id: 'subtitle1',
       text: 'Subtitle 1',
       x: centerX,
-      y: centerY + 40,
-      size: 24,
-      minSize: 14,
-      maxSize: 40,
+      y: centerY + ts.subtitle.size * 0.8,
+      size: ts.subtitle.size,
+      minSize: ts.subtitle.minSize,
+      maxSize: ts.subtitle.maxSize,
       color: '#FFFFFF',
       isTitle: false,
       maxLength: 90,
       font: FONTS.subtitle,
       isBold: false,
-      wrapWidth: Math.min(config.width * 0.7, 600),
+      wrapWidth: subWrap,
       textAlign: 'center',
     },
   ];
 };
 
 // --- KPMG Logo Configuration ---
-// Position is relative to canvas. Adjust x, y per platform as needed.
+// Per-platform logo widths (aspect ratio maintained automatically)
 export const LOGO_CONFIG = {
   path: '/assets/KPMG_blue_logo.svg',
-  width: 100, // Logo width in px (aspect ratio maintained)
+  // Per-platform logo width in px
+  widths: {
+    insta: 100,
+    linkedin: 130,
+    twitter: 150,
+    ecomms: 80,
+  },
   // Default positions per platform (top-left with padding)
   positions: {
-    insta:    { x: 30, y: 30 },
+    insta: { x: 30, y: 30 },
     linkedin: { x: 30, y: 30 },
-    twitter:  { x: 30, y: 30 },
-    ecomms:   { x: 30, y: 30 },
+    twitter: { x: 30, y: 30 },
+    ecomms: { x: 30, y: 30 },
   },
 };
 
@@ -126,7 +155,7 @@ export const WINDOW_MOTIF_DEFAULTS = {
   initialHeightFraction: 0.5,
   minCoverFraction: 0.20, // Minimum 20% of canvas area
   aspectRatio: '7:10',    // Default; switchable to '10:7'
-  defaultGradient: 'dark', // 'dark', 'medium', 'light'
+  defaultGradient: 'dark', // 'medium', 'medium', 'light'
 };
 
 // All 3 gradient options — NO saturation, 80% opacity overlay
@@ -152,10 +181,21 @@ export const MOTIF_GRADIENTS = {
 };
 
 // --- Swoosh Configuration ---
+// Per-platform swoosh dimensions (width × height in px)
 export const SWOOSH_CONFIG = {
-  width: 120,   // Swoosh width in px
-  height: 80,   // Swoosh height in px
+  // Number of horizontal pixel-band samples for color sampling
+  sampleBandSize: 30,
+  // Fraction of swoosh width that stays fully opaque (100% opacity)
+  // After this fraction, opacity fades linearly to 0% at far end.
+  opaqueFraction: 0.6,
   defaultSide: 'right', // 'left' or 'right'
+  // Per-platform swoosh dimensions
+  platforms: {
+    insta: { width: 120, height: 80 },
+    linkedin: { width: 180, height: 100 },
+    twitter: { width: 200, height: 100 },
+    ecomms: { width: 80, height: 60 },
+  },
 };
 
 // --- Grid Configuration ---

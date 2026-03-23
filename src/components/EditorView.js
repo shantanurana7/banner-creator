@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import {
-  Download, RefreshCw, Grid3X3, FileDown, ImageIcon, Repeat,
+  Download, RefreshCw, Grid3X3, FileDown, ImageIcon, Repeat, EyeOff,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -79,12 +79,17 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
         newStates[platform] = {
           textElements: createDefaultTextElements(platform),
           cropState: { zoom: 1, panX: 0, panY: 0 },
-          croppedImageUrl: null, // Will hold result from ImageCropModal
+          croppedImageUrl: null,
+          onlyImage: false,
           motifState: {
             enabled: false,
             gradientKey: WINDOW_MOTIF_DEFAULTS.defaultGradient,
             windowRatio: initRatio,
             window: win,
+            gradientOpacity: 0.8,
+            blendMode: 'source-over',
+            contrast: 100,
+            saturation: 100,
           },
           swooshState: {
             enabled: false,
@@ -178,6 +183,17 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
     });
   };
 
+  // Toggle "Only Image" mode
+  const handleOnlyImageToggle = () => {
+    const newOnlyImage = !currentState.onlyImage;
+    updateCurrentPlatform({
+      onlyImage: newOnlyImage,
+      // Clear text elements when enabling Only Image mode
+      // Restore defaults when disabling
+      textElements: newOnlyImage ? [] : createDefaultTextElements(activeTab),
+    });
+  };
+
   const handleReset = () => {
     const config = PLATFORM_CONFIGS[activeTab];
     const initRatio = WINDOW_MOTIF_DEFAULTS.aspectRatio;
@@ -187,11 +203,16 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
       textElements: createDefaultTextElements(activeTab),
       cropState: { zoom: 1, panX: 0, panY: 0 },
       croppedImageUrl: null,
+      onlyImage: false,
       motifState: {
         enabled: false,
         gradientKey: WINDOW_MOTIF_DEFAULTS.defaultGradient,
         windowRatio: initRatio,
         window: win,
+        gradientOpacity: 0.8,
+        blendMode: 'source-over',
+        contrast: 100,
+        saturation: 100,
       },
       swooshState: {
         enabled: false,
@@ -225,21 +246,30 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      drawImageCover(ctx, img, pConfig.width, pConfig.height, state.cropState);
+      // Image adjustments from motif state
+      const imgAdj = {
+        contrast:   state.motifState?.contrast   !== undefined ? state.motifState.contrast   : 100,
+        saturation: state.motifState?.saturation !== undefined ? state.motifState.saturation : 100,
+      };
+      drawImageCover(ctx, img, pConfig.width, pConfig.height, state.cropState, imgAdj);
 
       if (state.motifState?.enabled) {
         drawWindowMotif(ctx, pConfig.width, pConfig.height, state.motifState);
       }
       if (state.swooshState?.enabled && state.motifState?.enabled) {
-        drawSwoosh(ctx, tempCanvas, state.motifState, state.swooshState);
+        drawSwoosh(ctx, tempCanvas, state.motifState, state.swooshState, platformKey);
       }
-      if (logoImgRef.current) {
+      // Skip logo in "only image" mode
+      if (logoImgRef.current && !state.onlyImage) {
         drawLogo(ctx, logoImgRef.current, platformKey);
       }
       if (state.draftStamp) {
         drawDraftStamp(ctx, pConfig.width);
       }
-      drawTextElements(ctx, state.textElements);
+      // Skip text in "only image" mode
+      if (!state.onlyImage) {
+        drawTextElements(ctx, state.textElements);
+      }
       callback(tempCanvas);
     };
     // Use cropped image if available
@@ -273,6 +303,8 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
       });
     });
   };
+
+  const onlyImage = currentState.onlyImage || false;
 
   return (
     <div className="animate-fade-in">
@@ -369,6 +401,7 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
           gridRatio={currentState.gridRatio}
           draftStamp={currentState.draftStamp}
           logoImg={logoLoaded ? logoImgRef.current : null}
+          onlyImage={onlyImage}
           onTextDrag={handleTextDrag}
           onMotifWindowChange={(window) =>
             updateCurrentPlatform({
@@ -394,8 +427,36 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
             <ImageIcon size={16} /> Edit Image Background
           </button>
 
-          {/* Text Panel */}
+          {/* Only Image Mode Toggle */}
           <div className="glass rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <EyeOff size={14} className={onlyImage ? 'text-accent-ice' : 'text-gray-400'} />
+                <div>
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${onlyImage ? 'text-accent-ice' : 'text-gray-400'}`}>
+                    Only Image
+                  </span>
+                  <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">
+                    Remove text, logo &amp; use image-only mode
+                  </p>
+                </div>
+              </div>
+              <OnlyImageToggle checked={onlyImage} onChange={handleOnlyImageToggle} />
+            </div>
+            {onlyImage && (
+              <p className="text-[10px] text-accent-ice/70 mt-2 animate-fade-in">
+                All text and logo hidden. You can still add window motif &amp; resize/download.
+              </p>
+            )}
+          </div>
+
+          {/* Text Panel — hidden and dimmed in Only Image mode */}
+          <div className={`glass rounded-xl p-4 transition-opacity duration-200 ${onlyImage ? 'opacity-30 pointer-events-none select-none' : ''}`}>
+            {onlyImage && (
+              <div className="text-center text-[11px] text-gray-500 italic mb-2">
+                Disabled in Only Image mode
+              </div>
+            )}
             <TextPanel
               textElements={currentState.textElements}
               onUpdateElement={updateTextElement}
@@ -452,5 +513,24 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
     </div>
   );
 };
+
+/**
+ * Styled toggle for "Only Image" mode with accent-style colors.
+ */
+const OnlyImageToggle = ({ checked, onChange }) => (
+  <button
+    onClick={onChange}
+    type="button"
+    className={`relative inline-flex items-center flex-shrink-0
+                w-9 h-5 rounded-full transition-colors duration-200 cursor-pointer
+                ${checked ? 'bg-accent-light' : 'bg-surface-300'}`}
+  >
+    <span
+      className={`inline-block w-3.5 h-3.5 rounded-full bg-white shadow-sm
+                  transform transition-transform duration-200
+                  ${checked ? 'translate-x-[18px]' : 'translate-x-[3px]'}`}
+    />
+  </button>
+);
 
 export default EditorView;
