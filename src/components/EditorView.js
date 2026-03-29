@@ -49,20 +49,22 @@ const computeMinWindow = (config, ratio) => {
  */
 const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorStatesChange }) => {
   const [activeTab, setActiveTab] = useState(selectedPlatforms[0] || '');
-  const logoImgRef = useRef(null);
-  const [logoLoaded, setLogoLoaded] = useState(false);
+  const logosRef = useRef({ white: null, blue: null });
+  const [logosLoaded, setLogosLoaded] = useState(0);
   const [cropModalOpen, setCropModalOpen] = useState(false);
 
-  // Load logo once
+  // Load logos once
   useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      logoImgRef.current = img;
-      setLogoLoaded(true);
-    };
-    img.onerror = () => console.warn('Failed to load logo');
-    img.src = LOGO_CONFIG.path;
+    Object.entries(LOGO_CONFIG.paths).forEach(([key, path]) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        logosRef.current[key] = img;
+        setLogosLoaded(prev => prev + 1);
+      };
+      img.onerror = () => console.warn(`Failed to load ${key} logo`);
+      img.src = path;
+    });
   }, []);
 
   // Initialize editor states for selected platforms
@@ -80,6 +82,7 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
           textElements: createDefaultTextElements(platform),
           cropState: { zoom: 1, panX: 0, panY: 0 },
           croppedImageUrl: null,
+          logoColor: LOGO_CONFIG.defaultColor,
           onlyImage: false,
           motifState: {
             enabled: false,
@@ -95,6 +98,9 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
             enabled: false,
             side: SWOOSH_CONFIG.defaultSide,
             offsetY: win.height / 2,
+            opacity: 1,
+            width: SWOOSH_CONFIG.platforms[platform]?.width?.default || 120,
+            height: SWOOSH_CONFIG.platforms[platform]?.height?.default || 80,
           },
           gridVisible: false,
           gridRatio: GRID_CONFIG.defaultRatio,
@@ -137,6 +143,23 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
     const newTextElements = currentState.textElements.map((el) =>
       el.id === elementId ? { ...el, [key]: value } : el
     );
+    updateCurrentPlatform({ textElements: newTextElements });
+  };
+
+  const applyTextPreset = (preset) => {
+    if (!preset) return;
+    const firstTitleId = currentState.textElements.find(e => e.isTitle)?.id;
+    const firstSubtitleId = currentState.textElements.find(e => !e.isTitle)?.id;
+    
+    const newTextElements = currentState.textElements.map((el) => {
+      if (el.id === firstTitleId && preset.title) {
+        return { ...el, ...preset.title };
+      }
+      if (el.id === firstSubtitleId && preset.subtitle) {
+        return { ...el, ...preset.subtitle };
+      }
+      return el;
+    });
     updateCurrentPlatform({ textElements: newTextElements });
   };
 
@@ -203,6 +226,7 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
       textElements: createDefaultTextElements(activeTab),
       cropState: { zoom: 1, panX: 0, panY: 0 },
       croppedImageUrl: null,
+      logoColor: LOGO_CONFIG.defaultColor,
       onlyImage: false,
       motifState: {
         enabled: false,
@@ -218,6 +242,9 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
         enabled: false,
         side: SWOOSH_CONFIG.defaultSide,
         offsetY: win.height / 2,
+        opacity: 1,
+        width: SWOOSH_CONFIG.platforms[activeTab]?.width?.default || 120,
+        height: SWOOSH_CONFIG.platforms[activeTab]?.height?.default || 80,
       },
       gridVisible: false,
       gridRatio: GRID_CONFIG.defaultRatio,
@@ -260,8 +287,9 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
         drawSwoosh(ctx, tempCanvas, state.motifState, state.swooshState, platformKey);
       }
       // Skip logo in "only image" mode
-      if (logoImgRef.current && !state.onlyImage) {
-        drawLogo(ctx, logoImgRef.current, platformKey);
+      const selectedLogo = logosLoaded >= Object.keys(LOGO_CONFIG.paths).length ? logosRef.current[state.logoColor || 'white'] : null;
+      if (selectedLogo && !state.onlyImage) {
+        drawLogo(ctx, selectedLogo, platformKey);
       }
       if (state.draftStamp) {
         drawDraftStamp(ctx, pConfig.width);
@@ -400,7 +428,7 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
           gridVisible={currentState.gridVisible}
           gridRatio={currentState.gridRatio}
           draftStamp={currentState.draftStamp}
-          logoImg={logoLoaded ? logoImgRef.current : null}
+          logoImg={logosLoaded >= Object.keys(LOGO_CONFIG.paths).length ? logosRef.current[currentState.logoColor || 'white'] : null}
           onlyImage={onlyImage}
           onTextDrag={handleTextDrag}
           onMotifWindowChange={(window) =>
@@ -459,18 +487,44 @@ const EditorView = ({ imageDataUrl, selectedPlatforms, editorStates, onEditorSta
             )}
             <TextPanel
               textElements={currentState.textElements}
+              platformKey={activeTab}
               onUpdateElement={updateTextElement}
               onAddElement={addTextElement}
               onRemoveElement={removeTextElement}
+              onApplyPreset={applyTextPreset}
             />
           </div>
 
           {/* Motif & Effects Panel */}
-          <div className="glass rounded-xl p-4">
+          <div className="glass rounded-xl p-4 space-y-4">
+            
+            {/* Logo Settings */}
+            <div className="border-b border-surface-300/50 pb-4">
+              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold block mb-2">
+                Logo Color
+              </span>
+              <div className="flex gap-2">
+                {Object.keys(LOGO_CONFIG.paths).map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => updateCurrentPlatform({ logoColor: color })}
+                    className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium capitalize transition-all duration-200 ${
+                      currentState.logoColor === color
+                        ? 'bg-accent-light text-white'
+                        : 'bg-surface-200 text-gray-400 hover:text-white hover:border-surface-400'
+                    }`}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <MotifPanel
               motifState={currentState.motifState}
               swooshState={currentState.swooshState}
               draftStamp={currentState.draftStamp}
+              platformKey={activeTab}
               onMotifChange={(newMotifState) => {
                 // If ratio changed, recalculate window dimensions
                 if (newMotifState.windowRatio !== currentState.motifState.windowRatio) {

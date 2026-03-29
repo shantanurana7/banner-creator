@@ -186,9 +186,8 @@ const EditorCanvas = ({
   const getSwooshHit = useCallback((mx, my) => {
     if (!swooshState?.enabled || !motifState?.enabled || !motifState.window) return false;
     const win = motifState.window;
-    const platformDims = SWOOSH_CONFIG.platforms?.[platformKey] || { width: 120, height: 80 };
-    const sw = platformDims.width;
-    const sh = platformDims.height;
+    const sw = swooshState.width || SWOOSH_CONFIG.platforms?.[platformKey]?.width?.default || 120;
+    const sh = swooshState.height || SWOOSH_CONFIG.platforms?.[platformKey]?.height?.default || 80;
     // Match the same Y clamping as drawSwoosh
     const rawY = win.y + (swooshState.offsetY || win.height / 2) - sh / 2;
     const swooshY = Math.max(win.y, Math.min(win.y + win.height - sh, rawY));
@@ -353,7 +352,7 @@ const EditorCanvas = ({
 
         case 'swoosh': {
           const win = motifState.window;
-          const swooshH = (SWOOSH_CONFIG.platforms?.[platformKey] || { height: 80 }).height;
+          const swooshH = swooshState.height || SWOOSH_CONFIG.platforms?.[platformKey]?.height?.default || 80;
           // Clamp so the swoosh body stays fully within the window motif
           const minOffset = swooshH / 2;
           const maxOffset = win.height - swooshH / 2;

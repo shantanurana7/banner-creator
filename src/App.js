@@ -146,15 +146,27 @@ export default function App() {
             })}
           </div>
 
-          {/* Start New */}
-          <button
-            onClick={() => setShowStartNewModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-medium
-                       text-gray-400 bg-surface-200 rounded-lg border border-surface-300
-                       hover:text-white hover:border-surface-400 transition-all duration-200"
-          >
-            <Plus size={14} /> Start New
-          </button>
+          {/* Right Actions */}
+          <div className="flex items-center gap-3">
+            <a
+              href={process.env.PUBLIC_URL + '/assets/brand-guidelines.pdf'}
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2 text-xs font-medium text-gray-400 bg-surface-200 rounded-lg 
+                         border border-surface-300 hover:text-white hover:border-surface-400 
+                         transition-all duration-200"
+            >
+              Brand guidelines
+            </a>
+            <button
+              onClick={() => setShowStartNewModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-medium
+                         text-gray-400 bg-surface-200 rounded-lg border border-surface-300
+                         hover:text-white hover:border-surface-400 transition-all duration-200"
+            >
+              <Plus size={14} /> Start New
+            </button>
+          </div>
         </div>
       </nav>
 

@@ -117,7 +117,11 @@ export const createDefaultTextElements = (platformKey) => {
 // --- KPMG Logo Configuration ---
 // Per-platform logo widths (aspect ratio maintained automatically)
 export const LOGO_CONFIG = {
-  path: '/assets/KPMG_blue_logo.svg',
+  paths: {
+    white: '/assets/KPMG_white_logo.svg',
+    blue: '/assets/KPMG_blue_logo.svg',
+  },
+  defaultColor: 'white',
   // Per-platform logo width in px
   widths: {
     insta: 100,
@@ -153,7 +157,7 @@ export const WINDOW_MOTIF_DEFAULTS = {
   // Initial window size as fraction of canvas (will be at least 20%)
   initialWidthFraction: 0.4,
   initialHeightFraction: 0.5,
-  minCoverFraction: 0.20, // Minimum 20% of canvas area
+  minCoverFraction: 0.10, // Minimum 10% of canvas area
   aspectRatio: '7:10',    // Default; switchable to '10:7'
   defaultGradient: 'dark', // 'medium', 'medium', 'light'
 };
@@ -178,6 +182,24 @@ export const MOTIF_GRADIENTS = {
     to: '#00b8f5',
     opacity: 0.8,
   },
+  solidDark: {
+    label: 'Solid Dark',
+    from: '#00338d',
+    to: '#00338d',
+    opacity: 0.8,
+  },
+  solidMedium: {
+    label: 'Solid Med',
+    from: '#1e49e2',
+    to: '#1e49e2',
+    opacity: 0.8,
+  },
+  solidLight: {
+    label: 'Solid Light',
+    from: '#00b8f5',
+    to: '#00b8f5',
+    opacity: 0.8,
+  },
 };
 
 // --- Swoosh Configuration ---
@@ -188,13 +210,25 @@ export const SWOOSH_CONFIG = {
   // Fraction of swoosh width that stays fully opaque (100% opacity)
   // After this fraction, opacity fades linearly to 0% at far end.
   opaqueFraction: 0.6,
-  defaultSide: 'right', // 'left' or 'right'
+  defaultSide: 'left', // 'left' or 'right'
   // Per-platform swoosh dimensions
   platforms: {
-    insta: { width: 120, height: 80 },
-    linkedin: { width: 180, height: 100 },
-    twitter: { width: 200, height: 100 },
-    ecomms: { width: 80, height: 60 },
+    insta: { 
+      width: { default: 120, min: 100, max: 150 }, 
+      height: { default: 80, min: 50, max: 100 } 
+    },
+    linkedin: { 
+      width: { default: 120, min: 100, max: 150 }, 
+      height: { default: 80, min: 50, max: 100 } 
+    },
+    twitter: { 
+      width: { default: 120, min: 100, max: 150 }, 
+      height: { default: 80, min: 50, max: 100 } 
+    },
+    ecomms: { 
+      width: { default: 120, min: 100, max: 150 }, 
+      height: { default: 80, min: 50, max: 100 } 
+    },
   },
 };
 
@@ -208,3 +242,23 @@ export const GRID_CONFIG = {
 
 // --- Session Storage Key ---
 export const SESSION_STORAGE_KEY = 'image_content_factory_session';
+
+// --- Text Layout Presets ---
+export const TEXT_PRESETS = {
+  insta: [
+    { label: 'Preset 1', title: { x: 540, y: 300, size: 72 }, subtitle: { x: 540, y: 400, size: 36 } },
+    { label: 'Preset 2', title: { x: 540, y: 700, size: 72 }, subtitle: { x: 540, y: 800, size: 36 } },
+  ],
+  linkedin: [
+    { label: 'Preset 1', title: { x: 600, y: 200, size: 56 }, subtitle: { x: 600, y: 300, size: 28 } },
+    { label: 'Preset 2', title: { x: 600, y: 400, size: 56 }, subtitle: { x: 600, y: 500, size: 28 } },
+  ],
+  twitter: [
+    { label: 'Preset 1', title: { x: 800, y: 300, size: 72 }, subtitle: { x: 800, y: 400, size: 36 } },
+    { label: 'Preset 2', title: { x: 800, y: 600, size: 72 }, subtitle: { x: 800, y: 700, size: 36 } },
+  ],
+  ecomms: [
+    { label: 'Preset 1', title: { x: 300, y: 200, size: 48 }, subtitle: { x: 300, y: 300, size: 24 } },
+    { label: 'Preset 2', title: { x: 300, y: 500, size: 48 }, subtitle: { x: 300, y: 600, size: 24 } },
+  ],
+};

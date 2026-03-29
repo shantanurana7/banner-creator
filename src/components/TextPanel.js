@@ -1,12 +1,12 @@
 import React from 'react';
 import { Plus, Trash2, Bold, Minus } from 'lucide-react';
-import { MAX_TITLES, MAX_SUBTITLES, FONT_COLORS } from '../utils/constants';
+import { MAX_TITLES, MAX_SUBTITLES, FONT_COLORS, TEXT_PRESETS } from '../utils/constants';
 
 /**
  * TextPanel - Controls for editing text elements on the canvas.
  * Supports dynamic add/remove (max 3 titles, max 3 subtitles).
  */
-const TextPanel = ({ textElements, onUpdateElement, onAddElement, onRemoveElement }) => {
+const TextPanel = ({ textElements, platformKey, onUpdateElement, onAddElement, onRemoveElement, onApplyPreset }) => {
   const titles = textElements.filter((el) => el.isTitle);
   const subtitles = textElements.filter((el) => !el.isTitle);
 
@@ -16,6 +16,26 @@ const TextPanel = ({ textElements, onUpdateElement, onAddElement, onRemoveElemen
   return (
     <div className="space-y-4">
       <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Text Elements</h3>
+      <p className="text-[10px] text-gray-500 italic !mt-1 mb-3">
+        turn on the grid options from top to align the text
+      </p>
+
+      {/* Presets */}
+      {TEXT_PRESETS[platformKey] && (
+        <div className="flex gap-2">
+          {TEXT_PRESETS[platformKey].map((preset, idx) => (
+            <button
+              key={idx}
+              onClick={() => onApplyPreset(preset)}
+              className="flex-1 px-3 py-1.5 text-[11px] font-medium bg-surface-200 text-gray-400 
+                         rounded-lg border border-surface-300 hover:text-white hover:border-surface-400 
+                         transition-all duration-200"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Titles */}
       <div className="space-y-3">

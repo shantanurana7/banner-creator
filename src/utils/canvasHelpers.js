@@ -225,8 +225,8 @@ export const drawSwoosh = (ctx, canvas, motifState, swooshState, platformKey) =>
     ? SWOOSH_CONFIG.platforms[platformKey]
     : { width: 120, height: 80 };
 
-  const swooshW = platformDims.width;
-  const swooshH = platformDims.height;
+  const swooshW = swooshState.width || platformDims.width?.default || 120;
+  const swooshH = swooshState.height || platformDims.height?.default || 80;
   const stripCount = SWOOSH_CONFIG.sampleBandSize || 30;
   const opaqueFraction = SWOOSH_CONFIG.opaqueFraction || 0.6;
 
@@ -291,12 +291,14 @@ export const drawSwoosh = (ctx, canvas, motifState, swooshState, platformKey) =>
       grad = ctx.createLinearGradient(clampedX, currentY, clampedX + swooshW, currentY);
     }
 
-    // Fully opaque from window edge to opaqueFraction (inlined rgb to avoid lint warning)
-    grad.addColorStop(0, `rgb(${r}, ${g}, ${b})`);
-    grad.addColorStop(opaqueFraction, `rgb(${r}, ${g}, ${b})`);
-    // Ease-out fade: mid-point at ~35% alpha for a smooth visual ramp
+    const swooshOpacity = swooshState.opacity !== undefined ? swooshState.opacity : 1;
+
+    // Fully opaque from window edge to opaqueFraction
+    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${swooshOpacity})`);
+    grad.addColorStop(opaqueFraction, `rgba(${r}, ${g}, ${b}, ${swooshOpacity})`);
+    // Ease-out fade: mid-point at ~35% of the base opacity for a smooth visual ramp
     const midFade = opaqueFraction + (1 - opaqueFraction) * 0.5;
-    grad.addColorStop(midFade, `rgba(${r}, ${g}, ${b}, 0.35)`);
+    grad.addColorStop(midFade, `rgba(${r}, ${g}, ${b}, ${swooshOpacity * 0.35})`);
     grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     ctx.fillStyle = grad;

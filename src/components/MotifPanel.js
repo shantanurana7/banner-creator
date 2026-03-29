@@ -1,5 +1,5 @@
 import React from 'react';
-import { MOTIF_GRADIENTS } from '../utils/constants';
+import { MOTIF_GRADIENTS, SWOOSH_CONFIG } from '../utils/constants';
 import { Layers, Wind } from 'lucide-react';
 
 /**
@@ -29,7 +29,7 @@ const LabeledSlider = ({ label, value, min, max, step, onChange, displayValue })
 /**
  * MotifPanel - Controls for window motif, swoosh, and draft stamp.
  */
-const MotifPanel = ({ motifState, swooshState, draftStamp, onMotifChange, onSwooshChange, onDraftStampToggle }) => {
+const MotifPanel = ({ motifState, swooshState, draftStamp, platformKey, onMotifChange, onSwooshChange, onDraftStampToggle }) => {
 
   // Resolve current gradient opacity
   const currentGrad = MOTIF_GRADIENTS[motifState.gradientKey] || MOTIF_GRADIENTS.dark;
@@ -221,6 +221,40 @@ const MotifPanel = ({ motifState, swooshState, draftStamp, onMotifChange, onSwoo
 
             <div className="text-[10px] text-gray-500">
               Drag vertically on canvas to reposition
+            </div>
+
+            {/* Dimensional Sliders */}
+            <div className="border-t border-surface-300/50 pt-3 space-y-3">
+              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold block">
+                Swoosh Adjustments
+              </span>
+              <LabeledSlider
+                label="Opacity"
+                value={swooshState.opacity !== undefined ? swooshState.opacity : 1}
+                min={0}
+                max={1}
+                step={0.05}
+                displayValue={(swooshState.opacity !== undefined ? swooshState.opacity : 1).toFixed(2)}
+                onChange={(v) => onSwooshChange({ ...swooshState, opacity: v })}
+              />
+              <LabeledSlider
+                label="Width"
+                value={swooshState.width || 120}
+                min={SWOOSH_CONFIG.platforms[platformKey]?.width?.min || 50}
+                max={SWOOSH_CONFIG.platforms[platformKey]?.width?.max || 300}
+                step={1}
+                displayValue={`${swooshState.width || 120}px`}
+                onChange={(v) => onSwooshChange({ ...swooshState, width: v })}
+              />
+              <LabeledSlider
+                label="Height"
+                value={swooshState.height || 80}
+                min={SWOOSH_CONFIG.platforms[platformKey]?.height?.min || 30}
+                max={SWOOSH_CONFIG.platforms[platformKey]?.height?.max || 200}
+                step={1}
+                displayValue={`${swooshState.height || 80}px`}
+                onChange={(v) => onSwooshChange({ ...swooshState, height: v })}
+              />
             </div>
           </div>
         )}
